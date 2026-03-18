@@ -1,17 +1,38 @@
 import { WebSocketServer } from 'ws';
 import { nanoid } from 'nanoid';
+import http from 'http';
 
 const PORT = process.env.PORT || 3001;
-const wss = new WebSocketServer({
-  port: PORT,
-  host: '0.0.0.0' // 监听所有网络接口
+
+// 创建 HTTP 服务器
+const server = http.createServer((req, res) => {
+  // 健康检查端点
+  if (req.url === '/' || req.url === '/health') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      status: 'ok',
+      message: 'Chess WebSocket Server',
+      rooms: rooms.size,
+      connections: connections.size
+    }));
+  } else {
+    res.writeHead(404);
+    res.end('Not Found');
+  }
 });
+
+// 创建 WebSocket 服务器，挂载到 HTTP 服务器上
+const wss = new WebSocketServer({ server });
 
 // 房间管理
 const rooms = new Map(); // roomId -> { host, guest, hostWs, guestWs }
 const connections = new Map(); // ws -> { roomId, role }
 
-console.log(`🚀 WebSocket 服务器运行在 ws://localhost:${PORT}`);
+// 启动服务器
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 WebSocket 服务器运行在 ws://localhost:${PORT}`);
+  console.log(`📡 健康检查端点: http://localhost:${PORT}/health`);
+});
 
 wss.on('connection', (ws) => {
   console.log('📱 新客户端连接');
